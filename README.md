@@ -58,7 +58,7 @@ Driver Layer
  └─ Buzzer Driver
 ```
 
-### 🔁 Elevator FSM Design
+## 🔁 Elevator FSM Design
 FSM States
 IDLE
 
@@ -75,10 +75,10 @@ IDLE  → MOVING_UP / MOVING_DOWN : Button Input
 MOVING → STOP                   : Photo Interrupt
 STOP → IDLE                     : Target Floor Reached
 
-### 🔍 Key Point
+## 🔍 Key Point
 위치 상태와 이동 상태를 분리하여 FSM 안정성 확보
 
-### 📐 Sensor Fusion Strategy
+## 📐 Sensor Fusion Strategy
 Sensor	Role
 SR04	연속적인 높이 값 제공
 Photo Interrupter	층 도착을 보장하는 기준 이벤트
@@ -86,7 +86,7 @@ Photo Interrupter	층 도착을 보장하는 기준 이벤트
 SR04 단독 사용 시 발생하는 노이즈 문제를
 Photo Interrupt 기반 FSM 전이로 보정
 
-### 🎬 Final Demo
+## 🎬 Final Demo
 
 📟 7-Segment: 높이 실시간 표시
 
@@ -98,7 +98,7 @@ Photo Interrupt 기반 FSM 전이로 보정
 
 ⚡ Photo Interrupt: 층 도착 시 인터럽트 발생
 
-### 🛠️ Trouble Shooting
+## 🛠️ Trouble Shooting
 ❌ Issue 1 – FSM 설계 문제
 문제: 1F / 2F / 3F 상태만으로 FSM 구성 → 오동작
 
@@ -111,7 +111,7 @@ Photo Interrupt 기반 FSM 전이로 보정
 
 해결: 초기화 시 1F 복귀 루틴 추가
 
-### 🧠 What I Learned
+## 🧠 What I Learned
 FSM 설계에서 과정 상태의 중요성
 
 Interrupt는 상태 전이를 보장하는 핵심 이벤트
@@ -120,7 +120,7 @@ Interrupt는 상태 전이를 보장하는 핵심 이벤트
 
 임베디드 문제는 기능보다 구조에서 원인을 찾아야 함
 
-### 🔧 Development Environment
+## 🔧 Development Environment
 MCU: STM32F411
 
 IDE: STM32CubeIDE
