@@ -56,7 +56,9 @@ Driver Layer
  ├─ SR04 Driver
  ├─ Photo Interrupt Driver
  └─ Buzzer Driver
-🔁 Elevator FSM Design
+```
+
+### 🔁 Elevator FSM Design
 FSM States
 IDLE
 
