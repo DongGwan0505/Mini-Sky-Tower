@@ -1,0 +1,214 @@
+/*
+ * Elevator.c
+ *
+ *  Created on: Dec 23, 2025
+ *      Author: kccistc
+ */
+
+#include "Elevator.h"
+
+int ElevatorState = FIRST_F;
+
+hBtn btn_1F;
+hBtn btn_2F;
+hBtn btn_3F;
+
+hpi pi_1F;
+hpi pi_2F;
+hpi pi_3F;
+
+void Elevator_Init()
+{
+    StepMotor_Init();
+    Button_Init(&btn_1F, GPIOC, GPIO_PIN_10);
+    Button_Init(&btn_2F, GPIOC, GPIO_PIN_11);
+    Button_Init(&btn_3F, GPIOC, GPIO_PIN_12);
+    Photo_Interrupter_Init(&pi_1F, PI_F1_GPIO, PI_F1_PIN);
+    Photo_Interrupter_Init(&pi_2F, PI_F2_GPIO, PI_F2_PIN);
+    Photo_Interrupter_Init(&pi_3F, PI_F3_GPIO, PI_F3_PIN);
+
+    LCD_WriteStringXY(0, 0, "Init: Going 1F..");
+    LCD_WriteStringXY(1, 0, "Wait please...  ");
+
+    // 1층 센서가 감지될 때까지 내려감
+    while (HAL_GPIO_ReadPin(PI_F1_GPIO, PI_F1_PIN) == GPIO_PIN_RESET) {
+        Elevator_Down();
+        HAL_Delay(1);
+    }
+
+    Elevator_Stop();
+    ElevatorState = FIRST_F; // 상태를 확실하게 1층으로 설정
+
+    // [추가] 초기화 완료 메시지
+    LCD_WriteStringXY(0, 0, "Init Complete!  ");
+    LCD_WriteStringXY(1, 0, "Elevator Ready. ");
+
+    // 완료 메시지를 사용자가 읽을 수 있도록 1초 정도 대기
+    HAL_Delay(1000);
+}
+
+void Elevator_Up()
+{
+	StepMotor_SetDir(CW);
+	StepMotor_Speed(500);
+	StepMotor_Run();
+}
+
+void Elevator_Down()
+{
+	StepMotor_SetDir(CCW);
+	StepMotor_Speed(500);
+	StepMotor_Run();
+}
+
+void Elevator_Stop()
+{
+	StepMotor_Stop();
+}
+
+void Elevator_Move_1_to_3()
+{
+	Elevator_DispLCD();
+	static int target_F = 1;
+
+	switch (ElevatorState)
+	{
+	case FIRST_F:
+
+		if (Button_GetState(&btn_2F) == ACT_PUSHED) {
+			pi_2F.event = 0;
+			Elevator_Up();
+			ElevatorState = MOVING_UP;
+			target_F = 2;
+		}
+
+		if (Button_GetState(&btn_3F) == ACT_PUSHED) {
+			pi_3F.event = 0;
+			Elevator_Up();
+			ElevatorState = MOVING_UP;
+			target_F = 3;
+		}
+
+		break;
+	case SECOND_F:
+
+		if (Button_GetState(&btn_1F) == ACT_PUSHED) {
+			pi_1F.event = 0;
+			Elevator_Down();
+			ElevatorState = MOVING_DOWN;
+			target_F = 1;
+		}
+
+		if (Button_GetState(&btn_3F) == ACT_PUSHED) {
+			pi_3F.event = 0;
+			Elevator_Up();
+			ElevatorState = MOVING_UP;
+			target_F = 3;
+		}
+
+		break;
+	case THIRD_F:
+
+		if (Button_GetState(&btn_2F) == ACT_PUSHED) {
+			pi_2F.event = 0;
+			Elevator_Down();
+			ElevatorState = MOVING_DOWN;
+			target_F = 2;
+		}
+
+		if (Button_GetState(&btn_1F) == ACT_PUSHED) {
+			pi_1F.event = 0;
+			Elevator_Down();
+			ElevatorState = MOVING_DOWN;
+			target_F = 1;
+		}
+
+		break;
+	case MOVING_UP:
+		if (target_F == 2 && Photo_Interrupter_GetEvent(&pi_2F)) {
+			Elevator_Stop();
+			ElevatorState = SECOND_F;
+			target_F = 4;
+		}
+		else if (target_F == 3 && Photo_Interrupter_GetEvent(&pi_3F)) {
+			Elevator_Stop();
+			ElevatorState = THIRD_F;
+			target_F = 5;
+		}
+		break;
+	case MOVING_DOWN:
+		if (target_F == 1 && Photo_Interrupter_GetEvent(&pi_1F)) {
+			Elevator_Stop();
+			ElevatorState = FIRST_F;
+			target_F = 6;
+		}
+		else if (target_F == 2 && Photo_Interrupter_GetEvent(&pi_2F)) {
+			Elevator_Stop();
+			ElevatorState = SECOND_F;
+			target_F = 7;
+		}
+
+		break;
+	}
+}
+
+void Elevator_DispLCD()
+{
+    char line1[20]; // 첫 번째 줄 (층 이름/상태)
+    char line2[20]; // 두 번째 줄 (동작 상태)
+
+    // 초기값 -1로 설정하여 최초 1회 무조건 갱신
+    static int prevState = -1;
+
+    if ( prevState != ElevatorState ) {
+        prevState = ElevatorState;
+
+        // ---------------------------------------------------------
+        // [1] 첫 번째 줄: 롯데타워 스타일 층별 네이밍 & 방향 표시
+        // ---------------------------------------------------------
+        switch(ElevatorState) {
+            case FIRST_F:
+                // 1층: 로비 (공백으로 16자 꽉 채우기)
+                sprintf(line1, "1F: GRAND LOBBY ");
+                break;
+
+            case SECOND_F:
+                // 2층: 업무 시설
+                sprintf(line1, "2F: BIZ SUITE   ");
+                break;
+
+            case THIRD_F:
+                // 3층: 전망대/라운지
+                sprintf(line1, "3F: SKY LOUNGE  ");
+                break;
+
+            case MOVING_UP:
+                // 올라갈 때: 화살표 연출 (특수문자 대신 텍스트 화살표 사용)
+                sprintf(line1, "  ^ GOING UP ^  ");
+                break;
+
+            case MOVING_DOWN:
+                // 내려갈 때
+                sprintf(line1, "  v GOING DN v  ");
+                break;
+
+            default:
+                sprintf(line1, "System Error    ");
+                break;
+        }
+
+        // ---------------------------------------------------------
+        // [2] 두 번째 줄: 시스템 상태 요약
+        // ---------------------------------------------------------
+        if ((ElevatorState == MOVING_UP) || (ElevatorState == MOVING_DOWN)) {
+            sprintf(line2, "[Status]: RUN...");
+        } else {
+            // 멈췄을 때는 깔끔하게 "도착함(Arrived)" 느낌
+            sprintf(line2, "[Status]: STOP  ");
+        }
+
+        // LCD 출력
+        LCD_WriteStringXY(0, 0, line1); // 1번째 줄
+        LCD_WriteStringXY(1, 0, line2); // 2번째 줄
+    }
+}
